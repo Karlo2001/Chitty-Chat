@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	pb "CHITTY-CHAT/CC_proto"
@@ -18,15 +20,15 @@ var (
 	id         int32
 )
 
-func Join(client pb.chittyChatClient, req *pb.ParticipantInfo) {
+// Registers the client with the server.
+func Join(client pb.ChittyChatClient, req *pb.ParticipantInfo) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_id, err := client.Join(ctx, req)
 	if err != nil {
-		// Error handling
-		return
+		log.Fatalf(err.Error())
 	}
-	id = _id
+	id = _id.Id
 }
 
 func main() {
@@ -42,29 +44,71 @@ func main() {
 	client := pb.NewChittyChatClient(conn)
 
 	var name string
-	fmt.Printf("Enter name: ")
-	fmt.Scanln(&name)
-
-	Join(client, &pb.ParticipantInfo{time: 1, name: name})
-	// Get stream
-	stream, err := client.Recieve(&pb.ParticipantId{id})
-	if err != nil {
-		// Error handling
+	for {
+		fmt.Printf("Enter name: ")
+		sc := bufio.NewScanner(os.Stdin)
+		if sc.Scan() {
+			name = sc.Text()
+		}
+		if name != "*** Server" && name != "" {
+			break
+		}
+		fmt.Println("*** Invalid name")
 	}
+
+	Join(client, &pb.ParticipantInfo{Name: name})
+
+	stream, err := client.Recieve(context.Background(), &pb.ParticipantId{Id: id})
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	connected := true
 
 	// Goroutine recieving messages from server
 	go func() {
-		for {
+		for connected {
 			msg, err := stream.Recv()
 			if err == io.EOF {
-				// Stream ended
 				return
 			}
 			if err != nil {
-				//Error handling
+				log.Fatalf(err.Error())
 			}
-			log.Printf(msg)
+			log.Printf(msg.Name + ": " + msg.Msg)
 		}
 	}()
 
+	// Goroutine reading input
+	go func() {
+		println("Enter //Leave to disconnect")
+		var in string
+		sc := bufio.NewScanner(os.Stdin)
+		for {
+			if sc.Scan() {
+				in = sc.Text()
+			}
+			if in == "//Leave" {
+				_, err = client.Leave(context.Background(), &pb.ParticipantId{Id: id})
+				if err != nil {
+					log.Fatalf(err.Error())
+				} else {
+					connected = false
+					return
+				}
+			} else {
+				go func() {
+					_, err := client.Publish(context.Background(), &pb.Msg{Id: id, Msg: in})
+					if err != nil {
+						log.Fatalf(err.Error())
+					}
+				}()
+			}
+		}
+	}()
+
+	// Keep client running
+	for connected {
+		time.Sleep(1 * time.Second)
+	}
 }

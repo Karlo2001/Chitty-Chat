@@ -1,4 +1,4 @@
-module ChittyChat
+module CHITTY-CHAT
 
 go 1.17
 

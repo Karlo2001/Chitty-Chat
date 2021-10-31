@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	pb "CHITTY-CHAT/CC_proto"
@@ -20,6 +22,27 @@ var (
 	id         int32
 )
 
+type lClock struct {
+	t  int32
+	mu sync.Mutex
+}
+
+var clock = lClock{}
+
+func updateClock(time int32) {
+	clock.mu.Lock()
+	if clock.t < time {
+		clock.t = time
+	}
+	clock.t++
+	clock.mu.Unlock()
+}
+func incrementClock() {
+	clock.mu.Lock()
+	clock.t++
+	clock.mu.Unlock()
+}
+
 // Registers the client with the server.
 func Join(client pb.ChittyChatClient, req *pb.ParticipantInfo) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -29,6 +52,7 @@ func Join(client pb.ChittyChatClient, req *pb.ParticipantInfo) {
 		log.Fatalf(err.Error())
 	}
 	id = _id.Id
+	updateClock(_id.Time)
 }
 
 func main() {
@@ -56,9 +80,10 @@ func main() {
 		fmt.Println("*** Invalid name")
 	}
 
-	Join(client, &pb.ParticipantInfo{Name: name})
+	Join(client, &pb.ParticipantInfo{Time: clock.t, Name: name})
 
-	stream, err := client.Recieve(context.Background(), &pb.ParticipantId{Id: id})
+	incrementClock()
+	stream, err := client.Stream(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -75,7 +100,12 @@ func main() {
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			log.Printf(msg.Name + ": " + msg.Msg)
+			updateClock(msg.Time)
+			if msg.Name == "*** Server" {
+				log.Println(msg.Msg, clock.t)
+			} else {
+				log.Println("(" + strconv.Itoa(int(clock.t)) + ", " + msg.Name + "): " + msg.Msg)
+			}
 		}
 	}()
 
@@ -89,7 +119,8 @@ func main() {
 				in = sc.Text()
 			}
 			if in == "//Leave" {
-				_, err = client.Leave(context.Background(), &pb.ParticipantId{Id: id})
+				incrementClock()
+				_, err = client.Leave(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
 				if err != nil {
 					log.Fatalf(err.Error())
 				} else {
@@ -98,7 +129,8 @@ func main() {
 				}
 			} else {
 				go func() {
-					_, err := client.Publish(context.Background(), &pb.Msg{Id: id, Msg: in})
+					incrementClock()
+					_, err := client.Publish(context.Background(), &pb.MsgFromClient{Time: clock.t, Id: id, Msg: in})
 					if err != nil {
 						log.Fatalf(err.Error())
 					}

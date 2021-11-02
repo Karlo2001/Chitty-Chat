@@ -47,7 +47,6 @@ func Join(client pb.ChittyChatClient, req *pb.ParticipantInfo) {
 	}
 	id = _id.Id
 	clock.t = make([]int32, id+1)
-	updateClock(_id.Time)
 }
 
 func main() {

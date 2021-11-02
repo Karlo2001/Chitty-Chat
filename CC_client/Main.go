@@ -25,23 +25,15 @@ var (
 )
 
 type lClock struct {
-	t  int32
+	t  []int32
 	mu sync.Mutex
 }
 
 var clock = lClock{}
 
-func updateClock(time int32) {
-	clock.mu.Lock()
-	if clock.t < time {
-		clock.t = time
-	}
-	clock.t++
-	clock.mu.Unlock()
-}
 func incrementClock() {
 	clock.mu.Lock()
-	clock.t++
+	clock.t[id]++
 	clock.mu.Unlock()
 }
 
@@ -54,6 +46,7 @@ func Join(client pb.ChittyChatClient, req *pb.ParticipantInfo) {
 		log.Fatalf(err.Error())
 	}
 	id = _id.Id
+	clock.t = make([]int32, id+1)
 	updateClock(_id.Time)
 }
 
@@ -106,7 +99,7 @@ func main() {
 			if msg.Name == "*** Server" {
 				log.Println(msg.Msg, clock.t)
 			} else {
-				log.Println("(" + strconv.Itoa(int(clock.t)) + ", " + msg.Name + "): " + msg.Msg)
+				log.Println("(" + strconv.Itoa(int(lamportTime(clock.t))) + ", " + msg.Name + "): " + msg.Msg)
 			}
 		}
 	}()
@@ -157,4 +150,32 @@ func main() {
 	for connected {
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func max(a int32, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func lamportTime(clock []int32) int32 {
+	var l int32
+	for _, s := range clock {
+		l += s
+	}
+	return l
+}
+
+func updateClock(otherClock []int32) {
+	clock.mu.Lock()
+	for i, s := range otherClock {
+		if i >= len(clock.t) {
+			clock.t = append(clock.t, s)
+		} else {
+			clock.t[i] = max(clock.t[i], s)
+		}
+	}
+	clock.mu.Unlock()
+	incrementClock()
 }

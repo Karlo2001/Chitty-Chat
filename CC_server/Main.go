@@ -18,6 +18,7 @@ import (
 
 var (
 	port = flag.Int("port", 10000, "The server port")
+	id   int32
 )
 
 type chittyChatServer struct {
@@ -34,23 +35,15 @@ type client struct {
 var clients []client
 
 type lClock struct {
-	t  int32
+	t  []int32
 	mu sync.Mutex
 }
 
 var clock = lClock{}
 
-func updateClock(time int32) {
-	clock.mu.Lock()
-	if clock.t < time {
-		clock.t = time
-	}
-	clock.t++
-	clock.mu.Unlock()
-}
 func incrementClock() {
 	clock.mu.Lock()
-	clock.t++
+	clock.t[id]++
 	clock.mu.Unlock()
 }
 
@@ -61,7 +54,7 @@ func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*p
 	updateClock(in.Time)
 	var id int32
 	var added bool
-	for i := 0; i < len(clients); i++ {
+	for i := 1; i < len(clients); i++ {
 		if clients[i].left {
 			id = int32(i)
 			clients[i] = client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
@@ -122,10 +115,10 @@ func Broadcast(msg *pb.Msg) {
 	if msg.Name == "*** Server" {
 		log.Println(msg.Msg, clock.t)
 	} else {
-		log.Println("(" + strconv.Itoa(int(clock.t)) + ", " + msg.Name + "): " + msg.Msg)
+		log.Println("(" + strconv.Itoa(int(lamportTime(clock.t))) + ", " + msg.Name + "): " + msg.Msg)
 	}
 	for _, client := range clients {
-		if !client.left {
+		if !client.left && client.id != 0 {
 			client.ch <- msg
 		}
 	}
@@ -141,5 +134,37 @@ func main() {
 
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterChittyChatServer(grpcServer, &chittyChatServer{})
+	id = 0
+	clock.t = make([]int32, id+1)
+	nclient := client{id: 0, name: "", left: false}
+	clients = append(clients, nclient)
 	grpcServer.Serve(lis)
+}
+
+func max(a int32, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func lamportTime(clock []int32) int32 {
+	var l int32
+	for _, s := range clock {
+		l += s
+	}
+	return l
+}
+
+func updateClock(otherClock []int32) {
+	clock.mu.Lock()
+	for i, s := range otherClock {
+		if i >= len(clock.t) {
+			clock.t = append(clock.t, s)
+		} else {
+			clock.t[i] = max(clock.t[i], s)
+		}
+	}
+	clock.mu.Unlock()
+	incrementClock()
 }

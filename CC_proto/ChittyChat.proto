@@ -14,18 +14,18 @@ service ChittyChat {
 }
 
 message Msg {
-    int32 time = 1;
+    repeated int32 time = 1;
     int32 id = 2;
     string name = 3;
     string msg = 4;
 }
 
 message ParticipantInfo {
-    int32 time = 1;
+    repeated int32 time = 1;
     string name = 2;
 }
 
 message ParticipantId {
-    int32 time = 1;
+    repeated int32 time = 1;
     int32 id = 2;
 }

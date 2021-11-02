@@ -66,6 +66,7 @@ func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*p
 		clients = append(clients, nclient)
 	}
 	updateClock(in.Time)
+	clock.t = append(clock.t, 1)
 
 	m := "*** Participant " + in.Name + " joined Chitty-Chat at Lamport time" // + strconv.Itoa(int(clock.t))
 	Broadcast(&pb.Msg{Name: "*** Server", Msg: m})

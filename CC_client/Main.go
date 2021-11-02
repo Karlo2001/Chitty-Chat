@@ -77,7 +77,7 @@ func main() {
 
 	Join(client, &pb.ParticipantInfo{Time: clock.t, Name: name})
 
-	incrementClock()
+	//incrementClock()
 	stream, err := client.Stream(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
 	if err != nil {
 		log.Fatalf(err.Error())

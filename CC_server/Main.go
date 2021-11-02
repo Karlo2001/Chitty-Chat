@@ -113,7 +113,7 @@ func Broadcast(msg *pb.Msg) {
 	incrementClock()
 	msg.Time = clock.t
 	if msg.Name == "*** Server" {
-		log.Println(msg.Msg, clock.t)
+		log.Println(msg.Msg, strconv.Itoa(int(lamportTime(clock.t))))
 	} else {
 		log.Println("(" + strconv.Itoa(int(lamportTime(clock.t))) + ", " + msg.Name + "): " + msg.Msg)
 	}

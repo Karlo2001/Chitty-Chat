@@ -50,21 +50,10 @@ func incrementClock() {
 // If none is found, the new client is added to the end of the slice.
 // Also calls Broadcast to send a join message to each active client.
 func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*pb.ParticipantId, error) {
-	var id int32
-	var added bool
-	for i := 1; i < len(clients); i++ {
-		if clients[i].left {
-			id = int32(i)
-			clients[i] = client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
-			added = true
-			break
-		}
-	}
-	if !added {
-		id = int32(len(clients))
-		nclient := client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
-		clients = append(clients, nclient)
-	}
+	id := int32(len(clients))
+	nclient := client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
+	clients = append(clients, nclient)
+
 	updateClock(in.Time)
 	clock.t = append(clock.t, 1)
 

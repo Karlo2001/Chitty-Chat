@@ -81,7 +81,7 @@ func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*p
 }
 
 // Updates the "Left" status on the civen client.
-// The clients is then registered as no longer active.
+// The client is then registered as no longer active.
 // Also calls Broadcast to send a leave message to each active client.
 func (s *chittyChatServer) Leave(ctx context.Context, id *pb.ParticipantId) (*emptypb.Empty, error) {
 	updateClock(id.Time)

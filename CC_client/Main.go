@@ -8,8 +8,10 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	pb "CHITTY-CHAT/CC_proto"
@@ -117,26 +119,38 @@ func main() {
 		for {
 			if sc.Scan() {
 				in = sc.Text()
-			}
-			if in == "//Leave" {
-				incrementClock()
-				_, err = client.Leave(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
-				if err != nil {
-					log.Fatalf(err.Error())
-				} else {
-					connected = false
-					return
-				}
-			} else {
-				go func() {
+				if in == "//Leave" {
 					incrementClock()
-					_, err := client.Publish(context.Background(), &pb.MsgFromClient{Time: clock.t, Id: id, Msg: in})
+					_, err = client.Leave(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
 					if err != nil {
 						log.Fatalf(err.Error())
+					} else {
+						connected = false
+						return
 					}
-				}()
+				} else {
+					go func() {
+						incrementClock()
+						_, err := client.Publish(context.Background(), &pb.MsgFromClient{Time: clock.t, Id: id, Msg: in})
+						if err != nil {
+							log.Fatalf(err.Error())
+						}
+					}()
+				}
 			}
+
 		}
+	}()
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		_, err = client.Leave(context.Background(), &pb.ParticipantId{Time: clock.t, Id: id})
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		os.Exit(1)
 	}()
 
 	// Keep client running

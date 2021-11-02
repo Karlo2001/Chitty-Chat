@@ -8,21 +8,16 @@ option go_package = "random/CCBuffers";
 
 service ChittyChat {
     rpc Join(ParticipantInfo) returns (ParticipantId) {}
-    rpc Stream(ParticipantId) returns (stream MsgToClient) {}
+    rpc Stream(ParticipantId) returns (stream Msg) {}
     rpc Leave(ParticipantId) returns (google.protobuf.Empty) {}
-    rpc Publish(MsgFromClient) returns (google.protobuf.Empty) {}
+    rpc Publish(Msg) returns (google.protobuf.Empty) {}
 }
 
-message MsgFromClient {
+message Msg {
     int32 time = 1;
     int32 id = 2;
-    string msg = 3;
-}
-
-message MsgToClient {
-    int32 time = 1;
-    string name = 2;
-    string msg = 3;
+    string name = 3;
+    string msg = 4;
 }
 
 message ParticipantInfo {

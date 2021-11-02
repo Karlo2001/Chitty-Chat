@@ -131,7 +131,7 @@ func main() {
 				} else {
 					go func() {
 						incrementClock()
-						_, err := client.Publish(context.Background(), &pb.MsgFromClient{Time: clock.t, Id: id, Msg: in})
+						_, err := client.Publish(context.Background(), &pb.Msg{Time: clock.t, Id: id, Msg: in})
 						if err != nil {
 							log.Fatalf(err.Error())
 						}

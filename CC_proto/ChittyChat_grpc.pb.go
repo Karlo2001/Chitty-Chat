@@ -22,7 +22,7 @@ type ChittyChatClient interface {
 	Join(ctx context.Context, in *ParticipantInfo, opts ...grpc.CallOption) (*ParticipantId, error)
 	Stream(ctx context.Context, in *ParticipantId, opts ...grpc.CallOption) (ChittyChat_StreamClient, error)
 	Leave(ctx context.Context, in *ParticipantId, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Publish(ctx context.Context, in *MsgFromClient, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Publish(ctx context.Context, in *Msg, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type chittyChatClient struct {
@@ -58,7 +58,7 @@ func (c *chittyChatClient) Stream(ctx context.Context, in *ParticipantId, opts .
 }
 
 type ChittyChat_StreamClient interface {
-	Recv() (*MsgToClient, error)
+	Recv() (*Msg, error)
 	grpc.ClientStream
 }
 
@@ -66,8 +66,8 @@ type chittyChatStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittyChatStreamClient) Recv() (*MsgToClient, error) {
-	m := new(MsgToClient)
+func (x *chittyChatStreamClient) Recv() (*Msg, error) {
+	m := new(Msg)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (c *chittyChatClient) Leave(ctx context.Context, in *ParticipantId, opts ..
 	return out, nil
 }
 
-func (c *chittyChatClient) Publish(ctx context.Context, in *MsgFromClient, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *chittyChatClient) Publish(ctx context.Context, in *Msg, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/CCBuffers.ChittyChat/Publish", in, out, opts...)
 	if err != nil {
@@ -99,7 +99,7 @@ type ChittyChatServer interface {
 	Join(context.Context, *ParticipantInfo) (*ParticipantId, error)
 	Stream(*ParticipantId, ChittyChat_StreamServer) error
 	Leave(context.Context, *ParticipantId) (*emptypb.Empty, error)
-	Publish(context.Context, *MsgFromClient) (*emptypb.Empty, error)
+	Publish(context.Context, *Msg) (*emptypb.Empty, error)
 	mustEmbedUnimplementedChittyChatServer()
 }
 
@@ -116,7 +116,7 @@ func (UnimplementedChittyChatServer) Stream(*ParticipantId, ChittyChat_StreamSer
 func (UnimplementedChittyChatServer) Leave(context.Context, *ParticipantId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Leave not implemented")
 }
-func (UnimplementedChittyChatServer) Publish(context.Context, *MsgFromClient) (*emptypb.Empty, error) {
+func (UnimplementedChittyChatServer) Publish(context.Context, *Msg) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
 func (UnimplementedChittyChatServer) mustEmbedUnimplementedChittyChatServer() {}
@@ -159,7 +159,7 @@ func _ChittyChat_Stream_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type ChittyChat_StreamServer interface {
-	Send(*MsgToClient) error
+	Send(*Msg) error
 	grpc.ServerStream
 }
 
@@ -167,7 +167,7 @@ type chittyChatStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittyChatStreamServer) Send(m *MsgToClient) error {
+func (x *chittyChatStreamServer) Send(m *Msg) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -190,7 +190,7 @@ func _ChittyChat_Leave_Handler(srv interface{}, ctx context.Context, dec func(in
 }
 
 func _ChittyChat_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MsgFromClient)
+	in := new(Msg)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func _ChittyChat_Publish_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/CCBuffers.ChittyChat/Publish",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittyChatServer).Publish(ctx, req.(*MsgFromClient))
+		return srv.(ChittyChatServer).Publish(ctx, req.(*Msg))
 	}
 	return interceptor(ctx, in, info, handler)
 }

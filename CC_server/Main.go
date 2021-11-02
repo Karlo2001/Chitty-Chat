@@ -28,7 +28,7 @@ type client struct {
 	id   int32
 	name string
 	left bool
-	ch   chan *pb.MsgToClient
+	ch   chan *pb.Msg
 }
 
 var clients []client
@@ -64,19 +64,19 @@ func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*p
 	for i := 0; i < len(clients); i++ {
 		if clients[i].left {
 			id = int32(i)
-			clients[i] = client{id: id, name: in.Name, ch: make(chan *pb.MsgToClient, 100)}
+			clients[i] = client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
 			added = true
 			break
 		}
 	}
 	if !added {
 		id = int32(len(clients))
-		nclient := client{id: id, name: in.Name, ch: make(chan *pb.MsgToClient, 100)}
+		nclient := client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
 		clients = append(clients, nclient)
 	}
 
 	m := "*** Participant " + in.Name + " joined Chitty-Chat at Lamport time" // + strconv.Itoa(int(clock.t))
-	Broadcast(&pb.MsgToClient{Name: "*** Server", Msg: m})
+	Broadcast(&pb.Msg{Name: "*** Server", Msg: m})
 	return &pb.ParticipantId{Time: clock.t, Id: id}, nil
 }
 
@@ -88,7 +88,7 @@ func (s *chittyChatServer) Leave(ctx context.Context, id *pb.ParticipantId) (*em
 	clients[id.Id].left = true
 
 	m := "*** Participant " + clients[id.Id].name + " left Chitty-Chat at Lamport time" // + strconv.Itoa(int(clock.t))
-	Broadcast(&pb.MsgToClient{Name: "*** Server", Msg: m})
+	Broadcast(&pb.Msg{Name: "*** Server", Msg: m})
 	return &emptypb.Empty{}, nil
 }
 
@@ -107,16 +107,16 @@ func (s *chittyChatServer) Stream(id *pb.ParticipantId, srv pb.ChittyChat_Stream
 }
 
 // Receives the published message and sends it to the Broadcast method.
-func (s *chittyChatServer) Publish(ctx context.Context, msg *pb.MsgFromClient) (*emptypb.Empty, error) {
+func (s *chittyChatServer) Publish(ctx context.Context, msg *pb.Msg) (*emptypb.Empty, error) {
 	updateClock(msg.Time)
-	m := pb.MsgToClient{Name: clients[msg.Id].name, Msg: msg.Msg}
+	m := pb.Msg{Name: clients[msg.Id].name, Msg: msg.Msg}
 	Broadcast(&m)
 	return &emptypb.Empty{}, nil
 }
 
 // Writes message to the server,
 // before sending it to the channels belonging to each client.
-func Broadcast(msg *pb.MsgToClient) {
+func Broadcast(msg *pb.Msg) {
 	incrementClock()
 	msg.Time = clock.t
 	if msg.Name == "*** Server" {

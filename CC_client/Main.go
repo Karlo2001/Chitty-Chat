@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -98,9 +97,9 @@ func main() {
 			}
 			updateClock(msg.Time)
 			if msg.Name == "*** Server" {
-				log.Println(msg.Msg, strconv.Itoa(int(lamportTime(clock.t))))
+				log.Println(msg.Msg, clock.t)
 			} else {
-				log.Println("(" + strconv.Itoa(int(lamportTime(clock.t))) + ", " + msg.Name + "): " + msg.Msg)
+				log.Println(clock.t, msg.Name+": "+msg.Msg)
 			}
 		}
 	}()

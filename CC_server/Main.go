@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -51,7 +50,6 @@ func incrementClock() {
 // If none is found, the new client is added to the end of the slice.
 // Also calls Broadcast to send a join message to each active client.
 func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*pb.ParticipantId, error) {
-	updateClock(in.Time)
 	var id int32
 	var added bool
 	for i := 1; i < len(clients); i++ {
@@ -67,6 +65,7 @@ func (s *chittyChatServer) Join(ctx context.Context, in *pb.ParticipantInfo) (*p
 		nclient := client{id: id, name: in.Name, ch: make(chan *pb.Msg, 100)}
 		clients = append(clients, nclient)
 	}
+	updateClock(in.Time)
 
 	m := "*** Participant " + in.Name + " joined Chitty-Chat at Lamport time" // + strconv.Itoa(int(clock.t))
 	Broadcast(&pb.Msg{Name: "*** Server", Msg: m})
@@ -113,9 +112,9 @@ func Broadcast(msg *pb.Msg) {
 	incrementClock()
 	msg.Time = clock.t
 	if msg.Name == "*** Server" {
-		log.Println(msg.Msg, strconv.Itoa(int(lamportTime(clock.t))))
+		log.Println(msg.Msg, clock.t)
 	} else {
-		log.Println("(" + strconv.Itoa(int(lamportTime(clock.t))) + ", " + msg.Name + "): " + msg.Msg)
+		log.Println(clock.t, msg.Name+": "+msg.Msg)
 	}
 	for _, client := range clients {
 		if !client.left && client.id != 0 {
